@@ -4,13 +4,11 @@ const Admin = require("../models/adminCreate");
 const getAdmin = async (req, res) => {
   try {
     const admins = await Admin.find();
-    res.status(200).json([
-      {
-        message: "Admins fetched successfully",
-        success: true,
-        data: admins,
-      },
-    ]);
+    res.status(200).json({
+      message: "Admins fetched successfully",
+      success: true,
+      data: admins,
+    });
   } catch (err) {
     res.status(500).json({
       message: "Failed to retrieve admins",
@@ -34,7 +32,7 @@ const createAdmin = async (req, res) => {
   try {
     const existingAdmin = await Admin.findOne({ email });
     if (existingAdmin) {
-      return res.status(400).json({
+      return res.status(201).json({
         message: "Admin with this email already exists",
         success: false,
       });
@@ -71,8 +69,7 @@ const createAdmin = async (req, res) => {
 };
 
 const updateAdmin = async (req, res) => {
-  const { id } = req.params;
-  const { name, email, password, image } = req.body;
+  const { id, name, email, password, image } = req.body;
 
   if (!name && !email && !password && !image) {
     return res.status(400).json({
@@ -119,7 +116,7 @@ const updateAdmin = async (req, res) => {
 };
 
 const deleteAdmin = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.body;
 
   try {
     const admin = await Admin.findByIdAndDelete(id);

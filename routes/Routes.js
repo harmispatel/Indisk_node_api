@@ -38,8 +38,8 @@ router.post("/reset-password", resetPassword);
 
 router.get("/admin-list", getAdmin);
 router.post("/admin-create", createAdmin);
-router.put("/admin-update/:id", updateAdmin);
-router.delete("/admin-delete/:id", deleteAdmin);
+router.put("/admin-update", updateAdmin);
+router.delete("/admin-delete", deleteAdmin);
 
 router.get("/restaurant-list", getRestaurant);
 router.post("/restaurant-create", createRestaurant);
