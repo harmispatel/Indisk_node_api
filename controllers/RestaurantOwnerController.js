@@ -169,7 +169,7 @@ const updateRestaurantOwner = async (req, res) => {
 };
 
 const deleteRestaurantOwner = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.body;
 
   try {
     const restaurant = await Restaurant.findByIdAndDelete(id);

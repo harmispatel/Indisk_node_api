@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const upload = require("../middlewares/upload");
 
 const {
   getAuthUsers,
@@ -42,13 +43,13 @@ router.put("/admin-update", updateAdmin);
 router.delete("/admin-delete", deleteAdmin);
 
 router.get("/restaurant-list", getRestaurant);
-router.post("/restaurant-create", createRestaurant);
+router.post("/restaurant-create", upload.single("logo"), createRestaurant);
 router.put("/restaurant-update/:id", updateRestaurant);
-router.delete("/restaurant-delete/:id", deleteRestaurant);
+router.delete("/restaurant-delete", deleteRestaurant);
 
 router.get("/restaurant-owner-list", getRestaurantOwner);
 router.post("/restaurant-owner-create", createRestaurantOwner);
 router.put("/restaurant-owner-update/:id", updateRestaurantOwner);
-router.delete("/restaurant-owner-delete/:id", deleteRestaurantOwner);
+router.delete("/restaurant-owner-delete", deleteRestaurantOwner);
 
 module.exports = router;

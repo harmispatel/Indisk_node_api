@@ -22,14 +22,21 @@ const createRestaurant = async (req, res) => {
     restaurant_name,
     email,
     contact,
-    logo,
     description,
     tagLine,
     isActive,
     website_link,
   } = req.body;
 
-  if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
+  const logo = req.file ? req.file.filename : null;
+
+  if (
+    !restaurant_name ||
+    !email ||
+    !contact ||
+    !logo ||
+    isActive === undefined
+  ) {
     return res.status(400).json({
       message: "Please provide restaurant_name, email, contact, logo, isActive",
       success: false,
@@ -37,16 +44,16 @@ const createRestaurant = async (req, res) => {
   }
 
   try {
-    const existingRestaurant = await Restaurant.findOne({ email });
-    if (existingRestaurant) {
+    const emailExists = await Restaurant.findOne({ email });
+    if (emailExists) {
       return res.status(400).json({
         message: "Restaurant with this email already exists",
         success: false,
       });
     }
 
-    const existingRestaurantNumber = await Restaurant.findOne({ contact });
-    if (existingRestaurantNumber) {
+    const contactExists = await Restaurant.findOne({ contact });
+    if (contactExists) {
       return res.status(400).json({
         message: "Restaurant with this contact already exists",
         success: false,
@@ -57,7 +64,7 @@ const createRestaurant = async (req, res) => {
       restaurant_name,
       email,
       contact,
-      logo,
+      logo: `${process.env.FRONTEND_URL}/uploads/${logo}`,
       description,
       tagLine,
       isActive,
@@ -69,16 +76,7 @@ const createRestaurant = async (req, res) => {
     res.status(201).json({
       message: "Restaurant created successfully",
       success: true,
-      data: {
-        restaurant_name: newRestaurant.restaurant_name,
-        email: newRestaurant.email,
-        contact: newRestaurant.contact,
-        logo: newRestaurant.logo,
-        description: newRestaurant.description,
-        tagLine: newRestaurant.tagLine,
-        isActive: newRestaurant.isActive,
-        website_link: newRestaurant.website_link,
-      },
+      data: newRestaurant,
     });
   } catch (err) {
     res.status(500).json({
@@ -169,7 +167,7 @@ const updateRestaurant = async (req, res) => {
 };
 
 const deleteRestaurant = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.body;
 
   try {
     const restaurant = await Restaurant.findByIdAndDelete(id);
