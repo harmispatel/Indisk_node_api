@@ -19,7 +19,9 @@ const getAdmin = async (req, res) => {
 };
 
 const createAdmin = async (req, res) => {
-  const { name, email, password, image } = req.body;
+  const { name, email, password } = req.body;
+
+  const image = req.file ? req.file.filename : null;
 
   if (!name || !email || !password || !image) {
     return res.status(400).json({
@@ -43,8 +45,8 @@ const createAdmin = async (req, res) => {
     const newAdmin = new Admin({
       name,
       email,
-      password: hashedPassword,
-      image,
+      password,
+      image: `${process.env.FRONTEND_URL}/uploads/${image}`,
     });
 
     await newAdmin.save();
@@ -52,12 +54,7 @@ const createAdmin = async (req, res) => {
     res.status(201).json({
       message: "Admin created successfully",
       success: true,
-      data: {
-        name: newAdmin.name,
-        email: newAdmin.email,
-        password: newAdmin.password,
-        image: newAdmin.image,
-      },
+      data: newAdmin,
     });
   } catch (err) {
     res.status(500).json({
@@ -69,7 +66,11 @@ const createAdmin = async (req, res) => {
 };
 
 const updateAdmin = async (req, res) => {
-  const { id, name, email, password, image } = req.body;
+  const { id, name, email, password } = req.body;
+
+  const image = req.file
+    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
+    : null;
 
   if (!name && !email && !password && !image) {
     return res.status(400).json({
@@ -84,6 +85,26 @@ const updateAdmin = async (req, res) => {
       return res.status(404).json({
         message: "Admin not found",
         success: false,
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    const duplicate = await Admin.findOne({
+      _id: { $ne: id },
+      $or: [{ email }],
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already in use",
       });
     }
 

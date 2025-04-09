@@ -22,12 +22,13 @@ const createRestaurantOwner = async (req, res) => {
     restaurant_name,
     email,
     contact,
-    logo,
     description,
     tagLine,
     isActive,
     website_link,
   } = req.body;
+
+  const logo = req.file ? req.file.filename : null;
 
   if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
     return res.status(400).json({
@@ -57,7 +58,7 @@ const createRestaurantOwner = async (req, res) => {
       restaurant_name,
       email,
       contact,
-      logo,
+      logo: `${process.env.FRONTEND_URL}/uploads/${logo}`,
       description,
       tagLine,
       isActive,
@@ -69,16 +70,7 @@ const createRestaurantOwner = async (req, res) => {
     res.status(201).json({
       message: "Restaurant owner created successfully",
       success: true,
-      data: {
-        restaurant_name: newRestaurant.restaurant_name,
-        email: newRestaurant.email,
-        contact: newRestaurant.contact,
-        logo: newRestaurant.logo,
-        description: newRestaurant.description,
-        tagLine: newRestaurant.tagLine,
-        isActive: newRestaurant.isActive,
-        website_link: newRestaurant.website_link,
-      },
+      data: newRestaurant,
     });
   } catch (err) {
     res.status(500).json({
@@ -90,17 +82,20 @@ const createRestaurantOwner = async (req, res) => {
 };
 
 const updateRestaurantOwner = async (req, res) => {
-  const { id } = req.params;
   const {
+    id,
     restaurant_name,
     email,
     contact,
-    logo,
     description,
     tagLine,
     website_link,
     isActive,
   } = req.body;
+
+  const logo = req.file
+    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
+    : null;
 
   if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
     return res.status(400).json({
@@ -118,6 +113,26 @@ const updateRestaurantOwner = async (req, res) => {
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    const duplicate = await Restaurant.findOne({
+      _id: { $ne: id },
+      $or: [{ email }],
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already in use",
+      });
+    }
+
     if (restaurant_name) restaurant.restaurant_name = restaurant_name;
     if (email) restaurant.email = email;
     if (contact) restaurant.contact = contact;
@@ -128,22 +143,6 @@ const updateRestaurantOwner = async (req, res) => {
     if (isActive) restaurant.isActive = isActive;
 
     await restaurant.save();
-
-    // const existingRestaurant = await Restaurant.findOne({ email });
-    // if (existingRestaurant) {
-    //   return res.status(400).json({
-    //     message: "Restaurant with this email already exists",
-    //     success: false,
-    //   });
-    // }
-
-    // const existingRestaurantNumber = await Restaurant.findOne({ contact });
-    // if (existingRestaurantNumber) {
-    //   return res.status(400).json({
-    //     message: "Restaurant with this contact already exists",
-    //     success: false,
-    //   });
-    // }
 
     res.status(200).json({
       message: "Restaurant owner updated successfully",

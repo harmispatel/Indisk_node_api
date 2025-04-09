@@ -88,21 +88,24 @@ const createRestaurant = async (req, res) => {
 };
 
 const updateRestaurant = async (req, res) => {
-  const { id } = req.params;
   const {
+    id,
     restaurant_name,
     email,
     contact,
-    logo,
     description,
     tagLine,
     website_link,
     isActive,
   } = req.body;
 
-  if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
+  const logo = req.file
+    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
+    : null;
+
+  if (!id || !restaurant_name || !email || !contact || isActive === undefined) {
     return res.status(400).json({
-      message: "Please provide restaurant_name, email, contact, logo, isActive",
+      message: "Please provide id, restaurant_name, email, contact, isActive",
       success: false,
     });
   }
@@ -116,6 +119,45 @@ const updateRestaurant = async (req, res) => {
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    if (!/^\d{10}$/.test(contact)) {
+      return res.status(400).json({
+        success: false,
+        message: "Contact number must be exactly 10 digits",
+      });
+    }
+
+    const duplicate = await Restaurant.findOne({
+      _id: { $ne: id },
+      $or: [{ email }],
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already in use",
+      });
+    }
+
+    const duplicatePhone = await Restaurant.findOne({
+      _id: { $ne: id },
+      $or: [{ contact }],
+    });
+
+    if (duplicatePhone) {
+      return res.status(409).json({
+        success: false,
+        message: "Contact already in use",
+      });
+    }
+
     if (restaurant_name) restaurant.restaurant_name = restaurant_name;
     if (email) restaurant.email = email;
     if (contact) restaurant.contact = contact;
@@ -123,7 +165,7 @@ const updateRestaurant = async (req, res) => {
     if (description) restaurant.description = description;
     if (tagLine) restaurant.tagLine = tagLine;
     if (website_link) restaurant.website_link = website_link;
-    if (isActive) restaurant.isActive = isActive;
+    if (isActive !== undefined) restaurant.isActive = isActive;
 
     await restaurant.save();
 

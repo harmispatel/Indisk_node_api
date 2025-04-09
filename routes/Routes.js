@@ -38,18 +38,18 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
 router.get("/admin-list", getAdmin);
-router.post("/admin-create", createAdmin);
-router.put("/admin-update", updateAdmin);
+router.post("/admin-create", upload.single("image"), createAdmin);
+router.put("/admin-update", upload.single("image"), updateAdmin);
 router.delete("/admin-delete", deleteAdmin);
 
 router.get("/restaurant-list", getRestaurant);
 router.post("/restaurant-create", upload.single("logo"), createRestaurant);
-router.put("/restaurant-update/:id", updateRestaurant);
+router.put("/restaurant-update", upload.single("logo"), updateRestaurant);
 router.delete("/restaurant-delete", deleteRestaurant);
 
 router.get("/restaurant-owner-list", getRestaurantOwner);
-router.post("/restaurant-owner-create", createRestaurantOwner);
-router.put("/restaurant-owner-update/:id", updateRestaurantOwner);
+router.post("/restaurant-owner-create",  upload.single("logo"),createRestaurantOwner);
+router.put("/restaurant-owner-update", upload.single("logo"), updateRestaurantOwner);
 router.delete("/restaurant-owner-delete", deleteRestaurantOwner);
 
 module.exports = router;
