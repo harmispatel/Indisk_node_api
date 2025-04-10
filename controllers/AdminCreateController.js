@@ -110,10 +110,7 @@ const updateAdmin = async (req, res) => {
 
     if (name) admin.name = name;
     if (email) admin.email = email;
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      admin.password = hashedPassword;
-    }
+    if (password) admin.password = password;
     if (image) admin.image = image;
 
     await admin.save();
@@ -121,11 +118,7 @@ const updateAdmin = async (req, res) => {
     res.status(200).json({
       message: "Admin updated successfully",
       success: true,
-      data: {
-        name: admin.name,
-        email: admin.email,
-        image: admin.image,
-      },
+      data: admin,
     });
   } catch (err) {
     res.status(500).json({
