@@ -1,5 +1,7 @@
 const bcrypt = require("bcryptjs");
 const Admin = require("../models/adminCreate");
+const fs = require("fs");
+const path = require("path");
 
 const getAdmin = async (req, res) => {
   try {
@@ -66,20 +68,16 @@ const createAdmin = async (req, res) => {
 };
 
 const updateAdmin = async (req, res) => {
-  const { id, name, email, password } = req.body;
-
-  const image = req.file
-    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
-    : null;
-
-  if (!name && !email && !password && !image) {
-    return res.status(400).json({
-      message: "Please provide at least one field to update",
-      success: false,
-    });
-  }
-
   try {
+    const { id, name, email, password } = req.body;
+
+    if (!name && !email && !password && !image) {
+      return res.status(400).json({
+        message: "Please provide at least one field to update",
+        success: false,
+      });
+    }
+
     const admin = await Admin.findById(id);
     if (!admin) {
       return res.status(404).json({
@@ -108,10 +106,22 @@ const updateAdmin = async (req, res) => {
       });
     }
 
+    let profile_photo = admin.image;
+    if (req.file) {
+      const oldFileName = path.basename(admin.image || "");
+      const oldFilePath = path.join(__dirname, "../uploads", oldFileName);
+
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+
+      profile_photo = `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`;
+    }
+
     if (name) admin.name = name;
     if (email) admin.email = email;
     if (password) admin.password = password;
-    if (image) admin.image = image;
+    if (profile_photo) admin.image = profile_photo;
 
     await admin.save();
 
@@ -130,16 +140,34 @@ const updateAdmin = async (req, res) => {
 };
 
 const deleteAdmin = async (req, res) => {
-  const { id } = req.body;
-
   try {
-    const admin = await Admin.findByIdAndDelete(id);
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID is required",
+      });
+    }
+
+    const admin = await Admin.findById(id);
     if (!admin) {
       return res.status(404).json({
         message: "Admin not found",
         success: false,
       });
     }
+
+    if (admin.image) {
+      const fileName = path.basename(admin.image);
+      const filePath = path.join(__dirname, "../uploads", fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await Admin.findByIdAndDelete(id);
+
     res.status(200).json({
       message: "Admin deleted successfully",
       success: true,
