@@ -23,9 +23,7 @@ const getAdmin = async (req, res) => {
 const createAdmin = async (req, res) => {
   const { name, email, password } = req.body;
 
-  const image = req.file ? req.file.filename : null;
-
-  if (!name || !email || !password || !image) {
+  if (!name || !email || !password || !req.file) {
     return res.status(400).json({
       message:
         "Please provide name, email, password, and image (either file or URL)",
@@ -42,13 +40,33 @@ const createAdmin = async (req, res) => {
       });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const ext = path.extname(req.file.originalname);
+    const fileName = `${uniqueName}${ext}`;
+    const uploadDir = path.join(__dirname, "../uploads/admins");
+
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, req.file.buffer);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newAdmin = new Admin({
       name,
       email,
       password,
-      image: `${process.env.FRONTEND_URL}/uploads/admins/${image}`,
+      image: `${process.env.FRONTEND_URL}/uploads/admins/${fileName}`,
     });
 
     await newAdmin.save();
@@ -71,7 +89,7 @@ const updateAdmin = async (req, res) => {
   try {
     const { id, name, email, password } = req.body;
 
-    if (!name && !email && !password && !image) {
+    if (!name && !email && !password && !req.file) {
       return res.status(400).json({
         message: "Please provide at least one field to update",
         success: false,
@@ -86,42 +104,61 @@ const updateAdmin = async (req, res) => {
       });
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email format",
+        });
+      }
+
+      const duplicate = await Admin.findOne({
+        _id: { $ne: id },
+        email,
       });
+
+      if (duplicate) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already in use",
+        });
+      }
+
+      admin.email = email;
     }
 
-    const duplicate = await Admin.findOne({
-      _id: { $ne: id },
-      $or: [{ email }],
-    });
-
-    if (duplicate) {
-      return res.status(409).json({
-        success: false,
-        message: "Email already in use",
-      });
-    }
-
-    let profile_photo = admin.image;
     if (req.file) {
       const oldFileName = path.basename(admin.image || "");
-      const oldFilePath = path.join(__dirname, "../uploads/admins", oldFileName);
+      const oldFilePath = path.join(
+        __dirname,
+        "../uploads/admins",
+        oldFileName
+      );
 
+      // Delete old image if exists
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
 
-      profile_photo = `${process.env.FRONTEND_URL}/uploads/admins/${req.file.filename}`;
+      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const ext = path.extname(req.file.originalname);
+      const fileName = `${uniqueName}${ext}`;
+      const uploadDir = path.join(__dirname, "../uploads/admins");
+
+      // Ensure the uploads folder exists
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      admin.image = `${process.env.FRONTEND_URL}/uploads/admins/${fileName}`;
     }
 
     if (name) admin.name = name;
-    if (email) admin.email = email;
     if (password) admin.password = password;
-    if (profile_photo) admin.image = profile_photo;
 
     await admin.save();
 
