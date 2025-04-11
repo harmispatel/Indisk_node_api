@@ -48,7 +48,7 @@ const createAdmin = async (req, res) => {
       name,
       email,
       password,
-      image: `${process.env.FRONTEND_URL}/uploads/${image}`,
+      image: `${process.env.FRONTEND_URL}/uploads/admins/${image}`,
     });
 
     await newAdmin.save();
@@ -109,13 +109,13 @@ const updateAdmin = async (req, res) => {
     let profile_photo = admin.image;
     if (req.file) {
       const oldFileName = path.basename(admin.image || "");
-      const oldFilePath = path.join(__dirname, "../uploads", oldFileName);
+      const oldFilePath = path.join(__dirname, "../uploads/admins", oldFileName);
 
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
 
-      profile_photo = `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`;
+      profile_photo = `${process.env.FRONTEND_URL}/uploads/admins/${req.file.filename}`;
     }
 
     if (name) admin.name = name;
@@ -160,7 +160,7 @@ const deleteAdmin = async (req, res) => {
 
     if (admin.image) {
       const fileName = path.basename(admin.image);
-      const filePath = path.join(__dirname, "../uploads", fileName);
+      const filePath = path.join(__dirname, "../uploads/admins", fileName);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
