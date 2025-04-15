@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const Admin = require("../models/adminCreate");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const getAdmin = async (req, res) => {
   try {
@@ -48,9 +49,8 @@ const createAdmin = async (req, res) => {
       });
     }
 
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(req.file.originalname);
-    const fileName = `${uniqueName}${ext}`;
+    const uniqueId = crypto.randomBytes(2).toString("hex");
+    const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
     const uploadDir = path.join(__dirname, "../uploads/admins");
 
     if (!fs.existsSync(uploadDir)) {
@@ -141,9 +141,8 @@ const updateAdmin = async (req, res) => {
         fs.unlinkSync(oldFilePath);
       }
 
-      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const ext = path.extname(req.file.originalname);
-      const fileName = `${uniqueName}${ext}`;
+      const uniqueId = crypto.randomBytes(2).toString("hex");
+      const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
       const uploadDir = path.join(__dirname, "../uploads/admins");
 
       // Ensure the uploads folder exists
