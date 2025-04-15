@@ -1,4 +1,7 @@
 const Restaurant = require("../models/RestaurantOwner");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const getRestaurantOwner = async (req, res) => {
   try {
@@ -18,26 +21,17 @@ const getRestaurantOwner = async (req, res) => {
 };
 
 const createRestaurantOwner = async (req, res) => {
-  const {
-    restaurant_name,
-    email,
-    contact,
-    description,
-    tagLine,
-    isActive,
-    website_link,
-  } = req.body;
-
-  const logo = req.file ? req.file.filename : null;
-
-  if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
-    return res.status(400).json({
-      message: "Please provide restaurant_name, email, contact, logo, isActive",
-      success: false,
-    });
-  }
-
   try {
+    const {
+      restaurant_name,
+      email,
+      contact,
+      description,
+      tagLine,
+      isActive,
+      website_link,
+    } = req.body;
+
     const existingRestaurant = await Restaurant.findOne({ email });
     if (existingRestaurant) {
       return res.status(400).json({
@@ -54,11 +48,22 @@ const createRestaurantOwner = async (req, res) => {
       });
     }
 
+    const uniqueId = crypto.randomBytes(2).toString("hex");
+    const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
+    const uploadDir = path.join(__dirname, "../uploads");
+
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, req.file.buffer);
+
     const newRestaurant = new Restaurant({
       restaurant_name,
       email,
       contact,
-      logo: `${process.env.FRONTEND_URL}/uploads/${logo}`,
+      logo: `${process.env.FRONTEND_URL}/uploads/${fileName}`,
       description,
       tagLine,
       isActive,
@@ -82,29 +87,18 @@ const createRestaurantOwner = async (req, res) => {
 };
 
 const updateRestaurantOwner = async (req, res) => {
-  const {
-    id,
-    restaurant_name,
-    email,
-    contact,
-    description,
-    tagLine,
-    website_link,
-    isActive,
-  } = req.body;
-
-  const logo = req.file
-    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
-    : null;
-
-  if ((!restaurant_name, !email, !contact, !logo, !isActive)) {
-    return res.status(400).json({
-      message: "Please provide restaurant_name, email, contact, logo, isActive",
-      success: false,
-    });
-  }
-
   try {
+    const {
+      id,
+      restaurant_name,
+      email,
+      contact,
+      description,
+      tagLine,
+      website_link,
+      isActive,
+    } = req.body;
+
     const restaurant = await Restaurant.findById(id);
     if (!restaurant) {
       return res.status(404).json({
@@ -133,10 +127,32 @@ const updateRestaurantOwner = async (req, res) => {
       });
     }
 
+    if (req.file) {
+      const oldFileName = path.basename(restaurant.logo || "");
+      const oldFilePath = path.join(__dirname, "../uploads", oldFileName);
+
+      // Delete old image if exists
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+
+      const uniqueId = crypto.randomBytes(2).toString("hex");
+      const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
+      const uploadDir = path.join(__dirname, "../uploads");
+
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      restaurant.logo = `${process.env.FRONTEND_URL}/uploads/${fileName}`;
+    }
+
     if (restaurant_name) restaurant.restaurant_name = restaurant_name;
     if (email) restaurant.email = email;
     if (contact) restaurant.contact = contact;
-    if (logo) restaurant.logo = logo;
     if (description) restaurant.description = description;
     if (tagLine) restaurant.tagLine = tagLine;
     if (website_link) restaurant.website_link = website_link;

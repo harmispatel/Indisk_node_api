@@ -1,4 +1,7 @@
 const Restaurant = require("../models/RestaurantCreate");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const getRestaurant = async (req, res) => {
   try {
@@ -18,32 +21,17 @@ const getRestaurant = async (req, res) => {
 };
 
 const createRestaurant = async (req, res) => {
-  const {
-    restaurant_name,
-    email,
-    contact,
-    description,
-    tagLine,
-    isActive,
-    website_link,
-  } = req.body;
-
-  const logo = req.file ? req.file.filename : null;
-
-  if (
-    !restaurant_name ||
-    !email ||
-    !contact ||
-    !logo ||
-    isActive === undefined
-  ) {
-    return res.status(400).json({
-      message: "Please provide restaurant_name, email, contact, logo, isActive",
-      success: false,
-    });
-  }
-
   try {
+    const {
+      restaurant_name,
+      email,
+      contact,
+      description,
+      tagLine,
+      isActive,
+      website_link,
+    } = req.body;
+
     const emailExists = await Restaurant.findOne({ email });
     if (emailExists) {
       return res.status(400).json({
@@ -60,11 +48,22 @@ const createRestaurant = async (req, res) => {
       });
     }
 
+    const uniqueId = crypto.randomBytes(2).toString("hex");
+    const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
+    const uploadDir = path.join(__dirname, "../uploads");
+
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadDir, fileName);
+    fs.writeFileSync(filePath, req.file.buffer);
+
     const newRestaurant = new Restaurant({
       restaurant_name,
       email,
       contact,
-      logo: `${process.env.FRONTEND_URL}/uploads/${logo}`,
+      logo: `${process.env.FRONTEND_URL}/uploads/${fileName}`,
       description,
       tagLine,
       isActive,
@@ -99,17 +98,6 @@ const updateRestaurant = async (req, res) => {
     isActive,
   } = req.body;
 
-  const logo = req.file
-    ? `${process.env.FRONTEND_URL}/uploads/${req.file.filename}`
-    : null;
-
-  if (!id || !restaurant_name || !email || !contact || isActive === undefined) {
-    return res.status(400).json({
-      message: "Please provide id, restaurant_name, email, contact, isActive",
-      success: false,
-    });
-  }
-
   try {
     const restaurant = await Restaurant.findById(id);
     if (!restaurant) {
@@ -124,13 +112,6 @@ const updateRestaurant = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid email format",
-      });
-    }
-
-    if (!/^\d{10}$/.test(contact)) {
-      return res.status(400).json({
-        success: false,
-        message: "Contact number must be exactly 10 digits",
       });
     }
 
@@ -158,10 +139,32 @@ const updateRestaurant = async (req, res) => {
       });
     }
 
+    if (req.file) {
+      const oldFileName = path.basename(restaurant.logo || "");
+      const oldFilePath = path.join(__dirname, "../uploads", oldFileName);
+
+      // Delete old image if exists
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+
+      const uniqueId = crypto.randomBytes(2).toString("hex");
+      const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
+      const uploadDir = path.join(__dirname, "../uploads");
+
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      restaurant.logo = `${process.env.FRONTEND_URL}/uploads/${fileName}`;
+    }
+
     if (restaurant_name) restaurant.restaurant_name = restaurant_name;
     if (email) restaurant.email = email;
     if (contact) restaurant.contact = contact;
-    if (logo) restaurant.logo = logo;
     if (description) restaurant.description = description;
     if (tagLine) restaurant.tagLine = tagLine;
     if (website_link) restaurant.website_link = website_link;
