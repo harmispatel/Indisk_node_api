@@ -3,9 +3,20 @@ const Admin = require("../models/adminCreate");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const UserAuth = require("../models/authLogin");
 
 const getAdmin = async (req, res) => {
   try {
+    const { user_id } = req.body;
+
+    const userExists = await UserAuth.findById(user_id);
+    if (!userExists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
     const admins = await Admin.find();
     res.status(200).json({
       message: "Admins fetched successfully",
@@ -22,21 +33,28 @@ const getAdmin = async (req, res) => {
 };
 
 const createAdmin = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { user_id, name, email, password } = req.body;
 
-  if (!name || !email || !password || !req.file) {
+  if (!user_id || !name || !email || !password || !req.file) {
     return res.status(400).json({
-      message:
-        "Please provide name, email, password, and image (either file or URL)",
+      message: "Please provide user_id, name, email, password, and image",
       success: false,
     });
   }
 
   try {
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) {
-      return res.status(201).json({
-        message: "Admin with this email already exists",
+    const userExists = await UserAuth.findById(user_id);
+    if (!userExists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const emailExists = await Admin.findOne({ email });
+    if (emailExists) {
+      return res.status(409).json({
+        message: "Email already in use",
         success: false,
       });
     }
@@ -63,6 +81,7 @@ const createAdmin = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newAdmin = new Admin({
+      user_id,
       name,
       email,
       password,
@@ -87,7 +106,14 @@ const createAdmin = async (req, res) => {
 
 const updateAdmin = async (req, res) => {
   try {
-    const { id, name, email, password } = req.body;
+    const { id, user_id, name, email, password } = req.body;
+
+    if (!id || !user_id) {
+      return res.status(400).json({
+        message: "Both admin ID and user_id are required",
+        success: false,
+      });
+    }
 
     if (!name && !email && !password && !req.file) {
       return res.status(400).json({
@@ -96,10 +122,11 @@ const updateAdmin = async (req, res) => {
       });
     }
 
-    const admin = await Admin.findById(id);
+    const admin = await Admin.findOne({ _id: id, user_id });
+
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        message: "Admin not found with this ID and user_id",
         success: false,
       });
     }
@@ -145,7 +172,6 @@ const updateAdmin = async (req, res) => {
       const fileName = `${uniqueId}${path.extname(req.file.originalname)}`;
       const uploadDir = path.join(__dirname, "../uploads/admins");
 
-      // Ensure the uploads folder exists
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
@@ -157,7 +183,9 @@ const updateAdmin = async (req, res) => {
     }
 
     if (name) admin.name = name;
-    if (password) admin.password = password;
+    if (password) {
+      admin.password = await bcrypt.hash(password, 10); // hash if changing password
+    }
 
     await admin.save();
 
@@ -177,19 +205,20 @@ const updateAdmin = async (req, res) => {
 
 const deleteAdmin = async (req, res) => {
   try {
-    const { id } = req.body;
+    const { id, user_id } = req.body;
 
-    if (!id) {
+    if (!id || !user_id) {
       return res.status(400).json({
         success: false,
-        message: "ID is required",
+        message: "Both ID and user_id are required",
       });
     }
 
-    const admin = await Admin.findById(id);
+    const admin = await Admin.findOne({ _id: id, user_id });
+
     if (!admin) {
       return res.status(404).json({
-        message: "Admin not found",
+        message: "Admin not found for the given user_id",
         success: false,
       });
     }

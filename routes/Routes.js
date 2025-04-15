@@ -37,7 +37,7 @@ router.post("/signup", registerUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
-router.get("/admin-list", getAdmin);
+router.get("/admin-list", upload.none(), getAdmin);
 router.post("/admin-create", upload.single("image"), createAdmin);
 router.put("/admin-update", upload.single("image"), updateAdmin);
 router.delete("/admin-delete", deleteAdmin);
