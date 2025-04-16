@@ -5,6 +5,10 @@ const AuthData = mongoose.model(
   new mongoose.Schema({
     email: String,
     password: String,
+    token: {
+      type: String,
+      default: "",
+    },
     createdAt: { type: Date, default: Date.now },
   })
 );

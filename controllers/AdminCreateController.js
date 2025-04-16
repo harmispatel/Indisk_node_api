@@ -17,7 +17,7 @@ const getAdmin = async (req, res) => {
       });
     }
 
-    const admins = await Admin.find();
+    const admins = await Admin.find({ user_id });
     res.status(200).json({
       message: "Admins fetched successfully",
       success: true,
@@ -33,16 +33,16 @@ const getAdmin = async (req, res) => {
 };
 
 const createAdmin = async (req, res) => {
-  const { user_id, name, email, password } = req.body;
-
-  if (!user_id || !name || !email || !password || !req.file) {
-    return res.status(400).json({
-      message: "Please provide user_id, name, email, password, and image",
-      success: false,
-    });
-  }
-
   try {
+    const { user_id, name, email, password } = req.body;
+
+    if (!user_id || !name || !email || !password || !req.file) {
+      return res.status(400).json({
+        message: "Please provide user_id, name, email, password, and image",
+        success: false,
+      });
+    }
+
     const userExists = await UserAuth.findById(user_id);
     if (!userExists) {
       return res.status(404).json({
@@ -78,7 +78,7 @@ const createAdmin = async (req, res) => {
     const filePath = path.join(uploadDir, fileName);
     fs.writeFileSync(filePath, req.file.buffer);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
 
     const newAdmin = new Admin({
       user_id,
@@ -151,8 +151,6 @@ const updateAdmin = async (req, res) => {
           message: "Email already in use",
         });
       }
-
-      admin.email = email;
     }
 
     if (req.file) {
@@ -163,7 +161,6 @@ const updateAdmin = async (req, res) => {
         oldFileName
       );
 
-      // Delete old image if exists
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
@@ -183,9 +180,9 @@ const updateAdmin = async (req, res) => {
     }
 
     if (name) admin.name = name;
-    if (password) {
-      admin.password = await bcrypt.hash(password, 10); // hash if changing password
-    }
+    if (email) admin.email = email;
+    if (password) admin.password = password;
+    if (req.file) admin.image = `${process.env.FRONTEND_URL}/uploads/admins/${fileName}`;
 
     await admin.save();
 

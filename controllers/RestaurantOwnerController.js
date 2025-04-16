@@ -1,11 +1,22 @@
 const Restaurant = require("../models/RestaurantOwner");
+const UserAuth = require("../models/authLogin");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
 const getRestaurantOwner = async (req, res) => {
   try {
-    const restaurants = await Restaurant.find();
+    const { user_id } = req.body;
+
+    const userExists = await UserAuth.findById(user_id);
+    if (!userExists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const restaurants = await Restaurant.find({ user_id });
     res.status(200).json({
       message: "Restaurants owner fetched successfully",
       success: true,
@@ -23,6 +34,7 @@ const getRestaurantOwner = async (req, res) => {
 const createRestaurantOwner = async (req, res) => {
   try {
     const {
+      user_id,
       restaurant_name,
       email,
       contact,
@@ -31,6 +43,14 @@ const createRestaurantOwner = async (req, res) => {
       isActive,
       website_link,
     } = req.body;
+
+    const userExists = await UserAuth.findById(user_id);
+    if (!userExists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     const existingRestaurant = await Restaurant.findOne({ email });
     if (existingRestaurant) {
@@ -60,6 +80,7 @@ const createRestaurantOwner = async (req, res) => {
     fs.writeFileSync(filePath, req.file.buffer);
 
     const newRestaurant = new Restaurant({
+      user_id,
       restaurant_name,
       email,
       contact,
@@ -89,6 +110,7 @@ const createRestaurantOwner = async (req, res) => {
 const updateRestaurantOwner = async (req, res) => {
   try {
     const {
+      user_id,
       id,
       restaurant_name,
       email,
@@ -99,7 +121,14 @@ const updateRestaurantOwner = async (req, res) => {
       isActive,
     } = req.body;
 
-    const restaurant = await Restaurant.findById(id);
+    if (!id || !user_id) {
+      return res.status(400).json({
+        message: "Both admin ID and user_id are required",
+        success: false,
+      });
+    }
+
+    const restaurant = await Restaurant.findOne({ _id: id, user_id });
     if (!restaurant) {
       return res.status(404).json({
         message: "Restaurant owner not found",
@@ -131,7 +160,6 @@ const updateRestaurantOwner = async (req, res) => {
       const oldFileName = path.basename(restaurant.logo || "");
       const oldFilePath = path.join(__dirname, "../uploads", oldFileName);
 
-      // Delete old image if exists
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
@@ -150,29 +178,20 @@ const updateRestaurantOwner = async (req, res) => {
       restaurant.logo = `${process.env.FRONTEND_URL}/uploads/${fileName}`;
     }
 
-    if (restaurant_name) restaurant.restaurant_name = restaurant_name;
-    if (email) restaurant.email = email;
-    if (contact) restaurant.contact = contact;
-    if (description) restaurant.description = description;
-    if (tagLine) restaurant.tagLine = tagLine;
-    if (website_link) restaurant.website_link = website_link;
-    if (isActive) restaurant.isActive = isActive;
+    if (restaurant_name !== undefined) restaurant.restaurant_name = restaurant_name;
+    if (email !== undefined) restaurant.email = email;
+    if (contact !== undefined) restaurant.contact = contact;
+    if (description !== undefined) restaurant.description = description;
+    if (tagLine !== undefined) restaurant.tagLine = tagLine;
+    if (website_link !== undefined) restaurant.website_link = website_link;
+    if (isActive !== undefined) restaurant.isActive = isActive;
 
     await restaurant.save();
 
     res.status(200).json({
       message: "Restaurant owner updated successfully",
       success: true,
-      data: {
-        restaurant_name: restaurant.restaurant_name,
-        email: restaurant.email,
-        contact: restaurant.contact,
-        logo: restaurant.logo,
-        description: restaurant.description,
-        tagLine: restaurant.tagLine,
-        isActive: restaurant.isActive,
-        website_link: restaurant.website_link,
-      },
+      data: restaurant,
     });
   } catch (err) {
     res.status(500).json({
@@ -184,17 +203,35 @@ const updateRestaurantOwner = async (req, res) => {
 };
 
 const deleteRestaurantOwner = async (req, res) => {
-  const { id } = req.body;
-
   try {
-    const restaurant = await Restaurant.findByIdAndDelete(id);
+    const { id, user_id } = req.body;
+
+    if (!id || !user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Both ID and user_id are required",
+      });
+    }
+
+    const restaurant = await Restaurant.findOne({ _id: id, user_id });
 
     if (!restaurant) {
       return res.status(404).json({
-        message: "Restaurant owner not found",
+        message: "Restaurant owner not found for the given user_id",
         success: false,
       });
     }
+
+    if (restaurant.logo) {
+      const fileName = path.basename(restaurant.logo);
+      const filePath = path.join(__dirname, "../uploads", fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await Restaurant.findByIdAndDelete(id);
+
     res.status(200).json({
       message: "Restaurant owner deleted successfully",
       success: true,

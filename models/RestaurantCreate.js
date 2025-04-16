@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const restaurantSchema = new mongoose.Schema({
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "AdminUsers",
+    required: true,
+  },
   restaurant_name: {
     type: String,
     required: true,
